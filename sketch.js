@@ -64,6 +64,8 @@ const BTN_SIZE_INNER = BTN_SIZE - BTN_MARGIN;
 let mouseJustPressed = false;
 let mouseWasPressed = false;
 
+let mode = "edit";
+
 function draw() {
     if (mouseIsPressed && !mouseWasPressed) mouseJustPressed = true;
 
@@ -91,38 +93,43 @@ function draw() {
         baseX += BTN_SIZE + BTN_GAP;
     }
 
-    drawButton("Resize grid", () => {
-        const newCols = parseInt(prompt("How many columns?"));
-        const newRows = parseInt(prompt("How many rows?"));
-    
-        if (newCols !== newCols || newRows !== newRows) {
-            alert("At least one of the dimensions was not provided correctly. Aborting resize");
-            return;
-        }
-    
-        grid = new Grid(newCols, newRows);
-    });
-    drawButton("Share puzzle", () => {
-        let puzzleString = `${grid.cols}x${grid.rows};`;
-        puzzleString += grid.cells.join("");
-        history.replaceState(null, "", "?sharedPuzzle=" + puzzleString);
-        alert(`Your puzzle string has been added to the URL for easy copying (the URL will not actually work; the other person has to press "Load Puzzle" and then input the puzzle string). It is: "${puzzleString}" (without the quotes)`);
-    });
-    drawButton("Load puzzle", () => {
-        // Puzzle string format: CxR;XXXXXXXXXXXX
-        // C: columns
-        // R: rows
-        // X: cells (0: yellow, 1: magenta, 2: cyan) (left-to-right, top-to-bottom)
-        const puzzleString = prompt("Input puzzle string");
-        if (puzzleString === null) return;
-        // TODO: add input validation here
-        const [dimensions, cells] = puzzleString.split(";");
-        const [cols, rows] = dimensions.split("x").map(x => parseInt(x));
-        const newGrid = new Grid(cols, rows);
-        newGrid.cells = Array.from(cells).map(x => parseInt(x));
-        grid = newGrid;
-    });
-
+    if (mode === "edit") {
+        drawButton("Enter play mode", () => mode = "play");
+        drawButton("Resize grid", () => {
+            const newCols = parseInt(prompt("How many columns?"));
+            const newRows = parseInt(prompt("How many rows?"));
+        
+            if (newCols !== newCols || newRows !== newRows) {
+                alert("At least one of the dimensions was not provided correctly. Aborting resize");
+                return;
+            }
+        
+            grid = new Grid(newCols, newRows);
+        });
+        drawButton("Share puzzle", () => {
+            let puzzleString = `${grid.cols}x${grid.rows};`;
+            puzzleString += grid.cells.join("");
+            history.replaceState(null, "", "?sharedPuzzle=" + puzzleString);
+            alert(`Your puzzle string has been added to the URL for easy copying (the URL will not actually work; the other person has to press "Load Puzzle" and then input the puzzle string). It is: "${puzzleString}" (without the quotes)`);
+        });
+        drawButton("Load puzzle", () => {
+            // Puzzle string format: CxR;XXXXXXXXXXXX
+            // C: columns
+            // R: rows
+            // X: cells (0: yellow, 1: magenta, 2: cyan) (left-to-right, top-to-bottom)
+            const puzzleString = prompt("Input puzzle string");
+            if (puzzleString === null) return;
+            // TODO: add input validation here
+            const [dimensions, cells] = puzzleString.split(";");
+            const [cols, rows] = dimensions.split("x").map(x => parseInt(x));
+            const newGrid = new Grid(cols, rows);
+            newGrid.cells = Array.from(cells).map(x => parseInt(x));
+            grid = newGrid;
+            mode = "play";
+        });
+    } else {
+        drawButton("Enter edit mode", () => mode = "edit");
+    }
     pop();
 
     fill(255);
@@ -139,6 +146,7 @@ function mouseIsOver(x, y, w, h) {
 }
 
 function mousePressed() {
+    if (mode !== "edit") return;
     const [x, y] = grid.cellAt(mouseX, mouseY);
     if (!grid.inbounds(x, y)) return;
     let val = grid.get(x, y);
