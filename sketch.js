@@ -105,6 +105,67 @@ class Grid {
     inbounds(x, y) {
         return x >= 0 && x < this.cols && y >= 0 && y < this.rows;
     }
+
+    validate() {
+        // Rule 1: Regions must be connected by cells vertically or horizontally
+        // This rule is already enforced by the code in charge of creating regions
+
+        // Rule 2: Each region must contain the same amount of cells
+        const regionSizes = {};
+        for (const region of this.regions) {
+            if (region.length in regionSizes) {
+                regionSizes[region.length] = 1;
+            } else {
+                regionSizes[region.length] += 1;
+            }
+        }
+        if (Object.keys(regionSizes).length > 1) {
+            return "Not all regions are the same size"
+        }
+
+        // Rule 3: Ties are not allowed (for 1st)
+        const eVotes = {};
+        for (let i = 0; i < COLORS.length; i++) eVotes[i] = 0;
+        for (const region of this.regions) {
+            const votes = {};
+            for (let i = 0; i < COLORS.length; i++) votes[i] = 0;
+
+            for (const [x, y] of region) {
+                const color = this.get(x, y);
+                votes[color] += 1;
+            }
+
+            const sortedVotes = Object.entries(votes).toSorted(([colorA, scoreA], [colorB, scoreB]) => scoreB - scoreA).map(([color, score]) => ({color, colorName: COLORS[color], score}));
+            console.log(sortedVotes);
+            if (sortedVotes[0].score === sortedVotes[1].score) {
+                return `There is a tie in at least one region between ${sortedVotes[0].colorName} and ${sortedVotes[1].colorName}`
+            }
+            eVotes[sortedVotes[0].color] += 1;
+        }
+
+
+        // Every cell must be part of a region
+        for (let x = 0; x < this.cols; x++) {
+            for (let y = 0; y < this.rows; y++) {
+                let covered = false;
+                for (const region of this.regions) {
+                    if (regionContains(region, x, y)) {
+                        covered = true;
+                        break;
+                    }
+                }
+                if (!covered) return "Not every cell is part of a region";
+            }
+        }
+
+        // Cyan must be the plurality in the plurality of the regions
+        const sortedEVotes = Object.entries(eVotes).toSorted(([colorA, scoreA], [colorB, scoreB]) => scoreB - scoreA).map(([color, score]) => ({color, colorName: COLORS[color], score}));
+        if (sortedEVotes[0].colorName !== "cyan") {
+            return `Cyan must win. (currently ${sortedEVotes[0].colorName} wins)`;
+        }
+
+        return null;
+    }
 }
 
 let grid;
@@ -131,6 +192,7 @@ function draw() {
     background(0);
     grid.show();
 
+    let status = "";
     if (mode === "play") {
         push();
         grid.showRegions();
@@ -159,10 +221,16 @@ function draw() {
                 }
             }
         }
+
+        const rejectionReason = grid.validate();
+        if (rejectionReason === null) {
+            status = "Puzzle solved!";
+        } else {
+            status = "Invalid solution: " + rejectionReason;
+        }
     }
 
 
-    let altText = "";
     push();
     let baseX = BTN_GAP;
     let baseY = BTN_GAP;
@@ -172,7 +240,7 @@ function draw() {
         stroke(255);
         if (mouseIsOver(baseX, baseY, BTN_SIZE, BTN_SIZE)) {
             fill(127);
-            altText = desc;
+            status = desc;
     
             if (mouseJustPressed) callback();
         } else {
@@ -223,9 +291,9 @@ function draw() {
     pop();
 
     fill(255);
-    textSize(40);
+    textSize(30);
     textAlign(LEFT, BOTTOM);
-    text(altText, BTN_GAP, height - BTN_GAP);
+    text(status, BTN_GAP, height - BTN_GAP);
 
     if (mouseJustPressed) mouseJustPressed = false;
     mouseWasPressed = mouseIsPressed;
