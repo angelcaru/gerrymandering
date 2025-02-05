@@ -3,12 +3,36 @@ const COLORS = ["yellow", "magenta", "cyan"];
 
 const CELL_SIZE = 40;
 
+function regionContains(region, x, y) {
+    return region.filter(([cx, cy]) => cx === x && cy === y).length !== 0;
+}
+
 class Grid {
     constructor(cols, rows) {
         this.cols = cols;
         this.rows = rows;
 
+        this.regions = [];
+        this.currentRegion = null;
+
         this.cells = Array(cols * rows).fill(0);
+    }
+
+    addCellToCurrentRegion(x, y) {
+        for (const region of this.regions) {
+            if (regionContains(region, x, y)) return;
+        }
+        if (this.currentRegion === null) {
+            this.regions.push(this.currentRegion = []);
+        } else {
+            if (!(
+                 regionContains(this.currentRegion, x-1, y)
+              || regionContains(this.currentRegion, x+1, y)
+              || regionContains(this.currentRegion, x, y+1)
+              || regionContains(this.currentRegion, x, y-1)
+            )) return;
+        }
+        this.currentRegion.push([x, y]);
     }
 
     get(x, y) {
@@ -34,6 +58,40 @@ class Grid {
         }
     }
 
+    showRegions() {
+        const startX = width/2  - (this.cols * CELL_SIZE)/2;
+        const startY = height/2 - (this.rows * CELL_SIZE)/2;
+        for (let x = 0; x < this.cols; x++) {
+            for (let y = 0; y < this.rows; y++) {
+                const trueX = startX + x * CELL_SIZE;
+                const trueY = startY + y * CELL_SIZE;
+
+                for (const region of this.regions) {
+                    if (regionContains(region, x, y)) {
+                        noStroke();
+                        fill(255, 255, 255, 127);
+                        rect(trueX, trueY, CELL_SIZE, CELL_SIZE);
+
+                        stroke(0);
+                        strokeWeight(4);
+                        if (!regionContains(region, x-1, y)) {
+                            line(trueX, trueY, trueX, trueY+CELL_SIZE);
+                        }
+                        if (!regionContains(region, x+1, y)) {
+                            line(trueX+CELL_SIZE, trueY, trueX+CELL_SIZE, trueY+CELL_SIZE);
+                        }
+                        if (!regionContains(region, x, y-1)) {
+                            line(trueX, trueY, trueX+CELL_SIZE, trueY);
+                        }
+                        if (!regionContains(region, x, y+1)) {
+                            line(trueX, trueY+CELL_SIZE, trueX+CELL_SIZE, trueY+CELL_SIZE);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     cellAt(trueX, trueY) {
         const startX = width/2  - (this.cols * CELL_SIZE)/2;
         const startY = height/2 - (this.rows * CELL_SIZE)/2;
@@ -54,6 +112,7 @@ let grid;
 function setup() {
     createCanvas(windowWidth, windowHeight);
     grid = new Grid(7, 7);
+    document.addEventListener('contextmenu', event => event.preventDefault());
 }
 
 const BTN_GAP = 10;
@@ -71,6 +130,37 @@ function draw() {
 
     background(0);
     grid.show();
+
+    if (mode === "play") {
+        push();
+        grid.showRegions();
+        pop();
+        if (mouseIsPressed && mouseButton === LEFT) {
+            const [x, y] = grid.cellAt(mouseX, mouseY);
+            if (grid.inbounds(x, y)) {
+                grid.addCellToCurrentRegion(x, y);
+            }
+        } else {
+            grid.currentRegion = null;
+        }
+        if (mouseIsPressed && mouseButton === RIGHT) {
+            const [x, y] = grid.cellAt(mouseX, mouseY);
+            if (grid.inbounds(x, y)) {
+                let region = null;
+                for (const other of grid.regions) {
+                    if (regionContains(other, x, y)) {
+                        region = other;
+                        break;
+                    }
+                }
+                if (region !== null) {
+                    const i = grid.regions.indexOf(region);
+                    grid.regions.splice(i, 1);
+                }
+            }
+        }
+    }
+
 
     let altText = "";
     push();
