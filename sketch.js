@@ -185,6 +185,7 @@ let mouseJustPressed = false;
 let mouseWasPressed = false;
 
 let mode = "edit";
+let editModeModifiedCells = [];
 
 function draw() {
     if (mouseIsPressed && !mouseWasPressed) mouseJustPressed = true;
@@ -228,6 +229,23 @@ function draw() {
         } else {
             status = "Invalid solution: " + rejectionReason;
         }
+    } else if (mode === "edit") {
+        if (mouseIsPressed) {
+            const [x, y] = grid.cellAt(mouseX, mouseY);
+            if (!regionContains(editModeModifiedCells, x, y)) {
+                if (grid.inbounds(x, y)) {
+                    let val = grid.get(x, y);
+                    val += mouseButton === LEFT ? 1 : COLORS.length-1;
+                    val %= 3;
+                    grid.set(x, y, val);
+                }
+                editModeModifiedCells.push([x, y]);
+            }
+        } else {
+            editModeModifiedCells = [];
+        }
+    } else {
+        throw new Error(`Invalid mode: ${mode}`);
     }
 
 
@@ -305,12 +323,6 @@ function mouseIsOver(x, y, w, h) {
 
 function mousePressed() {
     if (mode !== "edit") return;
-    const [x, y] = grid.cellAt(mouseX, mouseY);
-    if (!grid.inbounds(x, y)) return;
-    let val = grid.get(x, y);
-    val++;
-    val %= 3;
-    grid.set(x, y, val);
 }
 
 function windowResized() {
