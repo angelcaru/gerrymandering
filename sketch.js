@@ -58,7 +58,7 @@ class Grid {
         }
     }
 
-    showRegions() {
+    showRegions(faultyRegions) {
         const startX = width/2  - (this.cols * CELL_SIZE)/2;
         const startY = height/2 - (this.rows * CELL_SIZE)/2;
         for (let x = 0; x < this.cols; x++) {
@@ -68,11 +68,20 @@ class Grid {
 
                 for (const region of this.regions) {
                     if (regionContains(region, x, y)) {
+                        const isFaulty = faultyRegions.indexOf(region) !== -1;
                         noStroke();
-                        fill(255, 255, 255, 127);
+                        if (isFaulty) {
+                            fill(255, 0, 0, 127);
+                        } else {
+                            fill(255, 255, 255, 127);
+                        }
                         rect(trueX, trueY, CELL_SIZE, CELL_SIZE);
 
-                        stroke(0);
+                        if (isFaulty) {
+                            stroke(255, 0, 0);
+                        } else {
+                            stroke(0);
+                        }
                         strokeWeight(4);
                         if (!regionContains(region, x-1, y)) {
                             line(trueX, trueY, trueX, trueY+CELL_SIZE);
@@ -111,16 +120,24 @@ class Grid {
         // This rule is already enforced by the code in charge of creating regions
 
         // Rule 2: Each region must contain the same amount of cells
-        const regionSizes = {};
-        for (const region of this.regions) {
-            if (region.length in regionSizes) {
-                regionSizes[region.length] = 1;
-            } else {
-                regionSizes[region.length] += 1;
+        {
+            const regionsBySize = {};
+            for (const region of this.regions) {
+                if (region.length in regionsBySize) {
+                    regionsBySize[region.length].push(region);
+                } else {
+                    regionsBySize[region.length] = [region];
+                }
             }
-        }
-        if (Object.keys(regionSizes).length > 1) {
-            return "Not all regions are the same size"
+            if (Object.keys(regionsBySize).length > 1) {
+                const regionsBySizeEntries = Object.entries(regionsBySize);
+                regionsBySizeEntries.sort(([, a], [, b]) => b.length - a.length);
+                const faultyRegions = [];
+                for (const [size, regions] of regionsBySizeEntries.slice(1)) {
+                    faultyRegions.push(...regions);
+                }
+                return {faultyRegions, error: "Not all regions are the same size"};
+            }
         }
 
         // Rule 3: Ties are not allowed (for 1st)
@@ -136,9 +153,8 @@ class Grid {
             }
 
             const sortedVotes = Object.entries(votes).toSorted(([colorA, scoreA], [colorB, scoreB]) => scoreB - scoreA).map(([color, score]) => ({color, colorName: COLORS[color], score}));
-            console.log(sortedVotes);
             if (sortedVotes[0].score === sortedVotes[1].score) {
-                return `There is a tie in at least one region between ${sortedVotes[0].colorName} and ${sortedVotes[1].colorName}`
+                return {faultyRegions: [region], error: `There is a tie in at least one region between ${sortedVotes[0].colorName} and ${sortedVotes[1].colorName}`};
             }
             eVotes[sortedVotes[0].color] += 1;
         }
@@ -154,14 +170,14 @@ class Grid {
                         break;
                     }
                 }
-                if (!covered) return "Not every cell is part of a region";
+                if (!covered) return {faultyRegions: [], error: "Not every cell is part of a region"};
             }
         }
 
         // Cyan must be the plurality in the plurality of the regions
         const sortedEVotes = Object.entries(eVotes).toSorted(([colorA, scoreA], [colorB, scoreB]) => scoreB - scoreA).map(([color, score]) => ({color, colorName: COLORS[color], score}));
         if (sortedEVotes[0].colorName !== "cyan") {
-            return `Cyan must win. (currently ${sortedEVotes[0].colorName} wins)`;
+            return {faultyRegions: [], error: `Cyan must win. (currently ${sortedEVotes[0].colorName} wins)`};
         }
 
         return null;
@@ -195,8 +211,15 @@ function draw() {
 
     let status = "";
     if (mode === "play") {
+        const {faultyRegions, error: rejectionReason} = grid.validate();
+        if (rejectionReason === null) {
+            status = "Puzzle solved!";
+        } else {
+            status = "Invalid solution: " + rejectionReason;
+        }
+
         push();
-        grid.showRegions();
+        grid.showRegions(faultyRegions);
         pop();
         if (mouseIsPressed && mouseButton === LEFT) {
             const [x, y] = grid.cellAt(mouseX, mouseY);
@@ -221,13 +244,6 @@ function draw() {
                     grid.regions.splice(i, 1);
                 }
             }
-        }
-
-        const rejectionReason = grid.validate();
-        if (rejectionReason === null) {
-            status = "Puzzle solved!";
-        } else {
-            status = "Invalid solution: " + rejectionReason;
         }
     } else if (mode === "edit") {
         if (mouseIsPressed) {
