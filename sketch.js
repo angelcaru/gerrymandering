@@ -180,7 +180,7 @@ class Grid {
             return {faultyRegions: [], error: `Cyan must win. (currently ${sortedEVotes[0].colorName} wins)`};
         }
 
-        return null;
+        return {faultyRegions: [], error: null};
     }
 }
 
