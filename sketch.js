@@ -165,6 +165,7 @@ class Grid {
         // Rule 3: Ties are not allowed (for 1st)
         const eVotes = {};
         for (let i = 0; i < COLORS.length; i++) eVotes[i] = 0;
+        const regionsWithTies = [];
         for (const region of this.regions) {
             const votes = {};
             for (let i = 0; i < COLORS.length; i++) votes[i] = 0;
@@ -176,11 +177,13 @@ class Grid {
 
             const sortedVotes = Object.entries(votes).toSorted(([colorA, scoreA], [colorB, scoreB]) => scoreB - scoreA).map(([color, score]) => ({color, colorName: COLORS[color], score}));
             if (sortedVotes[0].score === sortedVotes[1].score) {
-                return {faultyRegions: [region], error: `There is a tie in at least one region between ${sortedVotes[0].colorName} and ${sortedVotes[1].colorName}`};
+                regionsWithTies.push(region);
             }
             eVotes[sortedVotes[0].color] += 1;
         }
-
+        if (regionsWithTies.length > 0) {
+            return {faultyRegions: regionsWithTies, error: `No ties allowed!`};
+        }
 
         // Every cell must be part of a region
         for (let x = 0; x < this.cols; x++) {
