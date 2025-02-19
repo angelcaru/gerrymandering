@@ -329,20 +329,27 @@ function draw() {
         drawButton("Share puzzle", () => {
             let puzzleString = `${grid.cols}x${grid.rows};`;
             puzzleString += grid.cells.join("");
+            if (grid.no2x2Rule) puzzleString += "T";
+
             history.replaceState(null, "", "?sharedPuzzle=" + puzzleString);
             alert(`Your puzzle string has been added to the URL for easy copying (the URL will not actually work; the other person has to press "Load Puzzle" and then input the puzzle string). It is: "${puzzleString}" (without the quotes)`);
         });
         drawButton("Load puzzle", () => {
-            // Puzzle string format: CxR;XXXXXXXXXXXX
+            // Puzzle string format: CxR;XXXXXXXXXXXXT
             // C: columns
             // R: rows
             // X: cells (0: yellow, 1: magenta, 2: cyan) (left-to-right, top-to-bottom)
+            // T: no 2x2 rule (T: enable, <blank>: disable)
             const puzzleString = prompt("Input puzzle string");
             if (puzzleString === null) return;
             // TODO: add input validation here
-            const [dimensions, cells] = puzzleString.split(";");
+            let [dimensions, cells] = puzzleString.split(";");
             const [cols, rows] = dimensions.split("x").map(x => parseInt(x));
             const newGrid = new Grid(cols, rows);
+            if (cells.endsWith("T")) {
+                newGrid.no2x2Rule = true;
+                cells = cells.slice(0, -1);
+            }
             newGrid.cells = Array.from(cells).map(x => parseInt(x));
             grid = newGrid;
             mode = "play";
