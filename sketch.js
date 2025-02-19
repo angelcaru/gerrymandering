@@ -16,6 +16,8 @@ class Grid {
         this.currentRegion = null;
 
         this.cells = Array(cols * rows).fill(0);
+
+        this.no2x2Rule = false;
     }
 
     addCellToCurrentRegion(x, y) {
@@ -138,6 +140,26 @@ class Grid {
                 }
                 return {faultyRegions, error: "Not all regions are the same size"};
             }
+        }
+
+        // Bonus Rule: No 2x2s allowed
+        if (this.no2x2Rule) {
+            const regionsWith2x2s = [];
+            for (const region of this.regions) {
+                for (const [x0, y0] of region) {
+                    let breaksRule = true;
+                    for (let dx = 0; dx <= 1; dx++) {
+                        for (let dy = 0; dy <= 1; dy++) {
+                            if (!regionContains(region, x0 + dx, y0 + dy)) {
+                                breaksRule = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (breaksRule) regionsWith2x2s.push(region);
+                }
+            }
+            if (regionsWith2x2s.length > 0) return {faultyRegions: regionsWith2x2s, error: "No 2x2s allowed!"};
         }
 
         // Rule 3: Ties are not allowed (for 1st)
@@ -297,6 +319,9 @@ function draw() {
             }
         
             grid = new Grid(newCols, newRows);
+        });
+        drawButton(grid.no2x2Rule ? "Disable No 2x2 Rule (currently enabled)" : "Enable No 2x2 Rule (currently disabled)", () => {
+            grid.no2x2Rule = !grid.no2x2Rule;
         });
         drawButton("Share puzzle", () => {
             let puzzleString = `${grid.cols}x${grid.rows};`;

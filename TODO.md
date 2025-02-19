@@ -1,4 +1,3 @@
-- No 2x2 rule
 - Timer so you can see how long a puzzle takes you
 - Compatibility with codes from the [other gerrymandering website](https://imthegoat2024.github.io/gerryPuzzle/) that I didn't know existed when I started working on this (oops)
 - Better UI
